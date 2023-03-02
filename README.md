@@ -1,6 +1,10 @@
 This is a [Next.js](https://nextjs.org/) project bootstrapped with
 [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
+## Install the packages
+
+Run `npm install` to get all the packages you need installed
+
 ## Adding Environmental Variables
 
 Create a new file at the root called `.env.local`
