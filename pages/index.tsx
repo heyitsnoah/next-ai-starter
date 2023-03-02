@@ -9,30 +9,60 @@ import {
   Skeleton,
   Text,
   Textarea,
+  useToast,
+  VStack,
 } from '@chakra-ui/react'
 import { useRef, useState } from 'react'
+import { ChatCompletionRequestMessage } from 'openai'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export default function Home() {
+  // use chakra toast
+  const toast = useToast()
   const [isLoading, setIsLoading] = useState(false)
-  const [chatSession, setChatSession] = useState<string[]>([])
+  const [chatSession, setChatSession] = useState<
+    { role: string; content: string }[]
+  >([])
   const chatInput = useRef<HTMLTextAreaElement>(null)
   const getChatResponse = async () => {
     setIsLoading(true)
+
     const chatInputValue = chatInput.current?.value
-    if (!chatInputValue) return
+    chatInput.current!.value = ''
+    if (!chatInputValue) {
+      toast({
+        title: 'Error',
+        description: 'Something went wrong. Please try again later.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      })
+      setIsLoading(false)
+      return
+    }
+    let currentSession = [
+      ...chatSession,
+      { role: 'user', content: chatInputValue },
+    ]
+
+    setChatSession(currentSession)
     const response = await fetch('/api/chat', {
       method: 'POST',
-      body: JSON.stringify({ message: chatInputValue }),
+      body: JSON.stringify({ message: currentSession }),
       headers: {
         'Content-Type': 'application/json',
       },
     })
-    console.log(response)
+    if (!response.ok) {
+      setIsLoading(false)
+      return
+    }
     const data = await response.json()
-    console.log(data)
-    setChatSession((prev) => [...prev, data.message])
+    currentSession = [...currentSession, data.message]
+
+    setChatSession(currentSession)
+    setIsLoading(false)
   }
   return (
     <>
@@ -43,22 +73,35 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <Container>
-        {chatSession ? (
-          <Box>
-            {isLoading ? (
-              <>
-                <Skeleton height="20px" />
-                <Skeleton height="20px" />
-              </>
-            ) : (
-              chatSession.map((message, index) => (
-                <Text key={index}>{message}</Text>
+        <VStack my={'3'} align={'baseline'} spacing={'3'}>
+          {chatSession.length > 0
+            ? chatSession.map((message, index) => (
+                <Box display={'flex'} whiteSpace={'pre-line'} key={index}>
+                  <Text
+                    mr={'1'}
+                    fontWeight={'bold'}
+                    textTransform={'capitalize'}
+                  >
+                    {message.role}:{' '}
+                  </Text>
+                  <Text>{message.content.trim()}</Text>
+                </Box>
               ))
-            )}
+            : null}
+        </VStack>
+        {isLoading ? (
+          <Box mb={'3'}>
+            <Skeleton height="20px" />
           </Box>
         ) : null}
         <Textarea ref={chatInput} />
-        <Button onClick={() => getChatResponse()}>Submit</Button>
+        <Button
+          onClick={() => {
+            getChatResponse()
+          }}
+        >
+          Submit
+        </Button>
       </Container>
     </>
   )
